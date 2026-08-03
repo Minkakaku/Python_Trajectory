@@ -1,0 +1,11 @@
+* text=auto
+*.R text eol=lf
+*.r text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.Rmd text eol=lf
+*.rmd text eol=lf
+*.tsv text eol=lf
+source_catalog/** -text
+source_archive/** -text
