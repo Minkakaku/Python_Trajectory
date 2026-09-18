@@ -13,8 +13,10 @@ suppressPackageStartupMessages({
 
 # dplyr compatibility shims for packages that still call legacy underscore verbs
 # Implemented with modern dplyr/rlang APIs so no environment downgrade is required.
+# 功能：为 Monocle2 需要的旧版 dplyr 接口提供兼容实现（函数：patch_dplyr_legacy）。
 patch_dplyr_legacy <- function() {
   ns <- asNamespace('dplyr')
+  # 功能：向 dplyr 命名空间写入一个兼容函数（函数：patch_one）。
   patch_one <- function(fname, fdef) {
     if (exists(fname, envir = ns, inherits = FALSE) && bindingIsLocked(fname, ns)) {
       unlockBinding(fname, ns)
@@ -65,6 +67,7 @@ patch_dplyr_legacy <- function() {
 
 patch_dplyr_legacy()
 
+# 功能：检查 Monocle2 输入是否为非负、近似整数的原始 counts（函数：validate_raw_counts）。
 validate_raw_counts <- function(mat) {
   if (!inherits(mat, c('matrix', 'dgCMatrix', 'dgTMatrix', 'dgRMatrix'))) {
     warning('counts matrix class is unusual: ', paste(class(mat), collapse = ', '))
@@ -98,6 +101,7 @@ command = matrix(c(
 ), byrow=TRUE, ncol=4)
 args = getopt(command)
 
+# 功能：按 cluster 分层下采样，避免大群体完全主导轨迹（函数：sample_cells_per_cluster）。
 sample_cells_per_cluster <- function(seurat_object, colnames='leiden', num_cells=1000) {
   Idents(seurat_object) = colnames
   clusters <- Idents(seurat_object)
@@ -112,6 +116,7 @@ sample_cells_per_cluster <- function(seurat_object, colnames='leiden', num_cells
   subset(seurat_object, cells = sampled_cell_ids)
 }
 
+# 功能：保存 Monocle2 轨迹图及按标签分面的轨迹图（函数：monocleplot）。
 monocleplot <- function(cds, colnames, ptsize=1) {
   p = plot_cell_trajectory(cds, color_by=colnames, size=ptsize, show_backbone=TRUE)
   ggsave(paste0('monocle.trajectory.', colnames, '.png'), p, width=7, height=7.5)
@@ -155,15 +160,17 @@ if (downcluster) {
   print(table(pbmc@meta.data[, clustercolname]))
 }
 
-p_data <- pbmc@meta.data
+pbmc <- SeuratObject::JoinLayers(pbmc, assay = 'RNA')
+counts_mat <- SeuratObject::LayerData(pbmc, assay = 'RNA', layer = 'counts')
+p_data <- pbmc@meta.data[colnames(counts_mat), , drop = FALSE]
 print('Meta data columns:')
 print(colnames(p_data))
 
-f_data <- data.frame(gene_short_name=row.names(pbmc), row.names=row.names(pbmc))
+f_data <- data.frame(gene_short_name=rownames(counts_mat), row.names=rownames(counts_mat))
 pd <- new('AnnotatedDataFrame', data = p_data)
 fd <- new('AnnotatedDataFrame', data = f_data)
-validate_raw_counts(pbmc@assays$RNA$counts)
-cds <- newCellDataSet(pbmc@assays$RNA$counts,
+validate_raw_counts(counts_mat)
+cds <- newCellDataSet(counts_mat,
   phenoData = pd,
   featureData = fd,
   lowerDetectionLimit = 0.5,
@@ -237,7 +244,7 @@ write.table(df, 'monocle.metadata.xls', sep='\t', quote=FALSE, row.names=FALSE)
 
 if (BEAM_flag) {
   n_branch = length(cds@auxOrderingData[['DDRTree']]$branch_points)
-  for (branch_point in 1:n_branch) {
+  for (branch_point in seq_len(n_branch)) {
     outbeam = paste0(outpath, '/BEAM_analysis.Node', branch_point)
     if (!dir.exists(outbeam)) dir.create(outbeam)
     print(paste0('Analysis Beam Node ', branch_point))

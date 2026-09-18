@@ -1,4 +1,4 @@
-"""Portable Scanpy PAGA trajectory workflow."""
+"""Scanpy PAGA 独立轨迹入口：h5ad → 群间拓扑；可选 root → DPT pseudotime。"""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import scanpy as sc
 
 
+# 功能：把当前 Matplotlib 图同时保存为 PDF 和 300 dpi PNG。
 def save_current_figure(stem: Path, width: float = 8, height: float = 7) -> None:
     figure = plt.gcf()
     figure.set_size_inches(width, height)
@@ -19,17 +21,23 @@ def save_current_figure(stem: Path, width: float = 8, height: float = 7) -> None
     plt.close(figure)
 
 
+# 功能：计算 PAGA 连通拓扑，并在指定生物学 root 时计算 DPT pseudotime。
 def run_paga(
     input_h5ad: str,
     groupby: str,
+    root_group: str | None,
     output_dir: str,
-    object_out: str,
+    object_out: str | None,
     threshold: float,
     n_pcs: int,
     n_neighbors: int,
 ) -> None:
     output = Path(output_dir).expanduser().resolve()
-    object_path = Path(object_out).expanduser().resolve()
+    object_path = (
+        Path(object_out).expanduser().resolve()
+        if object_out
+        else output / "paga.h5ad"
+    )
     output.mkdir(parents=True, exist_ok=True)
     object_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -40,12 +48,10 @@ def run_paga(
 
     if "neighbors" not in adata.uns:
         sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=n_neighbors)
-
     sc.tl.paga(adata, groups=groupby)
 
     sc.pl.paga(adata, color=groupby, threshold=threshold, show=False)
     save_current_figure(output / "paga_graph")
-
     sc.pl.paga_compare(
         adata,
         color=groupby,
@@ -64,6 +70,24 @@ def run_paga(
         index_label=groupby,
     )
 
+    # PAGA 只估计群间拓扑；有明确起始群时才计算具有方向含义的 DPT。
+    if root_group is not None:
+        root_cells = np.flatnonzero(
+            adata.obs[groupby].astype(str).to_numpy() == root_group
+        )
+        if len(root_cells) == 0:
+            raise ValueError(f"root_group not found in {groupby}: {root_group}")
+        adata.uns["iroot"] = int(root_cells[0])
+        sc.tl.diffmap(adata)
+        sc.tl.dpt(adata)
+        adata.obs[[groupby, "dpt_pseudotime"]].reset_index(names="cell").to_csv(
+            output / "paga_dpt_pseudotime.csv",
+            index=False,
+        )
+        if "X_umap" in adata.obsm:
+            sc.pl.umap(adata, color="dpt_pseudotime", show=False)
+            save_current_figure(output / "paga_dpt_pseudotime")
+
     adata.write_h5ad(object_path)
     (output / "README_results_CN.md").write_text(
         "\n".join(
@@ -72,8 +96,11 @@ def run_paga(
                 "",
                 f"- 输入对象：{Path(input_h5ad).expanduser().resolve()}",
                 f"- 分组列：{groupby}",
+                f"- root group：{root_group if root_group is not None else '未指定'}",
                 f"- edge threshold：{threshold}",
                 f"- PAGA 对象：{object_path}",
+                "- PAGA 图表示群间连通拓扑；未指定 root 时不能解释为有方向的发育顺序。",
+                "- 指定 root 后的 DPT 是图上的相对顺序，不等于真实时间。",
             ]
         )
         + "\n",
@@ -81,12 +108,14 @@ def run_paga(
     )
 
 
+# 功能：定义 h5ad、分群列、可选 root 和图参数。
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run Scanpy PAGA trajectory analysis.")
+    parser = argparse.ArgumentParser(description="Run Scanpy PAGA and optional DPT.")
     parser.add_argument("--input-h5ad", required=True)
     parser.add_argument("--groupby", required=True)
-    parser.add_argument("--output-dir", default="results/04_trajectory/paga")
-    parser.add_argument("--object-out", default="data/processed/paga.h5ad")
+    parser.add_argument("--root-group", default=None)
+    parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--object-out", default=None)
     parser.add_argument("--threshold", type=float, default=0.1)
     parser.add_argument("--n-pcs", type=int, default=30)
     parser.add_argument("--n-neighbors", type=int, default=30)
@@ -98,6 +127,7 @@ if __name__ == "__main__":
     run_paga(
         input_h5ad=args.input_h5ad,
         groupby=args.groupby,
+        root_group=args.root_group,
         output_dir=args.output_dir,
         object_out=args.object_out,
         threshold=args.threshold,

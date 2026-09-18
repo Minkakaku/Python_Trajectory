@@ -9,3 +9,5 @@
 *.tsv text eol=lf
 source_catalog/** -text
 source_archive/** -text
+# 保留原始归档字节，使上传后的文件仍与校验记录一致。
+legacy/original/** -text

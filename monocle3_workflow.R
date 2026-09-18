@@ -1,4 +1,4 @@
-# Monocle3 trajectory workflow: edit the parameter block, then run with Rscript.
+# Monocle3 独立轨迹入口：从主 Seurat RDS 学习 principal graph 并计算 pseudotime。
 suppressPackageStartupMessages({
   library(monocle3)
   library(Seurat)
@@ -6,25 +6,40 @@ suppressPackageStartupMessages({
   library(ggplot2)
 })
 
-input_rds <- "path/to/seurat_object.rds"
-output_dir <- "results/04_trajectory/monocle3"
-object_dir <- "data/processed"
-assay <- "RNA"
-reduction <- "umap"
-cluster_col <- "cell_type"
-group_cols <- c("cell_type", "group", "sample")
-root_col <- "cell_type"
-root_groups <- c("RootCellType")
-use_partition <- FALSE
-close_loop <- FALSE
-workers <- 4
-seed <- 123
+# 功能：读取 --name value 形式的命令行参数。
+arg_value <- function(name, default = NULL) {
+  args <- commandArgs(trailingOnly = TRUE)
+  index <- match(name, args)
+  if (is.na(index) || index == length(args)) default else args[[index + 1L]]
+}
 
+# 功能：解析逗号分隔的 metadata 列或 root 标签。
+split_values <- function(x) trimws(strsplit(x, ",", fixed = TRUE)[[1]])
+
+input_rds <- arg_value("--input")
+output_dir <- arg_value("--output")
+if (is.null(input_rds) || is.null(output_dir)) {
+  stop("用法：Rscript monocle3_workflow.R --input annotated.rds --output results/monocle3 --root-col cell_type --root-groups RootCellType")
+}
+object_dir <- arg_value("--object-dir", output_dir)
+assay <- arg_value("--assay", "RNA")
+reduction <- arg_value("--reduction", "umap")
+cluster_col <- arg_value("--cluster-col", "cell_type")
+group_cols <- split_values(arg_value("--group-cols", "cell_type,group,sample"))
+root_col <- arg_value("--root-col", "cell_type")
+root_groups <- split_values(arg_value("--root-groups", "RootCellType"))
+use_partition <- as.logical(arg_value("--use-partition", "FALSE"))
+close_loop <- as.logical(arg_value("--close-loop", "FALSE"))
+workers <- as.integer(arg_value("--workers", "4"))
+seed <- as.integer(arg_value("--seed", "123"))
+
+# 功能：绘制并整理 Monocle3 principal graph 分析结果（函数：save_plot）。
 save_plot <- function(plot, stem, width = 8, height = 7) {
   ggsave(paste0(stem, ".pdf"), plot, width = width, height = height)
   ggsave(paste0(stem, ".png"), plot, width = width, height = height, dpi = 300)
 }
 
+# 功能：根据指定起始细胞在 Monocle3 主图上选择 root 节点（函数：get_root_principal_node）。
 get_root_principal_node <- function(cds, column, groups) {
   if (!(column %in% colnames(colData(cds)))) stop("root_col not found: ", column, call. = FALSE)
   root_cells <- colnames(cds)[colData(cds)[[column]] %in% groups]
@@ -43,8 +58,9 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(object_dir, recursive = TRUE, showWarnings = FALSE)
 
 seu <- readRDS(input_rds)
+seu <- SeuratObject::JoinLayers(seu, assay = assay)
 DefaultAssay(seu) <- assay
-counts <- GetAssayData(seu, assay = assay, layer = "counts")
+counts <- SeuratObject::LayerData(seu, assay = assay, layer = "counts")
 cell_metadata <- seu@meta.data[colnames(counts), , drop = FALSE]
 gene_metadata <- data.frame(gene_short_name = rownames(counts), row.names = rownames(counts))
 
@@ -118,7 +134,9 @@ writeLines(c(
   paste0("- 聚类列：", cluster_col),
   paste0("- root 条件：", root_col, " = ", paste(root_groups, collapse = ", ")),
   paste0("- root principal node：", root_pr_node),
+  paste0("- use_partition：", use_partition, "；close_loop：", close_loop),
   paste0("- 结果目录：", output_dir),
-  paste0("- Monocle3 CDS：", object_path)
+  paste0("- Monocle3 CDS：", object_path),
+  "- root 必须由已知生物学起点指定；pseudotime 表示图上的相对顺序，不等于真实时间。"
 ), file.path(output_dir, "README_results_CN.md"))
 capture.output(sessionInfo(), file = file.path(output_dir, "sessionInfo.txt"))

@@ -1,18 +1,28 @@
-# Slingshot trajectory workflow: edit the parameter block, then run with Rscript.
+# Slingshot 独立轨迹入口：使用主 Seurat RDS 的低维坐标和生物学注释拟合 lineage。
 suppressPackageStartupMessages({
   library(Seurat)
   library(SingleCellExperiment)
   library(slingshot)
 })
 
-input_rds <- "path/to/seurat_object.rds"
-output_dir <- "results/04_trajectory/slingshot"
-object_dir <- "data/processed"
-assay <- "RNA"
-reduction <- "umap"
-cluster_col <- "cell_type"
-start_cluster <- "RootCellType"
-seed <- 123
+# 功能：读取 --name value 形式的命令行参数。
+arg_value <- function(name, default = NULL) {
+  args <- commandArgs(trailingOnly = TRUE)
+  index <- match(name, args)
+  if (is.na(index) || index == length(args)) default else args[[index + 1L]]
+}
+
+input_rds <- arg_value("--input")
+output_dir <- arg_value("--output")
+start_cluster <- arg_value("--start-cluster")
+if (is.null(input_rds) || is.null(output_dir) || is.null(start_cluster)) {
+  stop("用法：Rscript slingshot_workflow.R --input annotated.rds --output results/slingshot --start-cluster RootCellType")
+}
+object_dir <- arg_value("--object-dir", output_dir)
+assay <- arg_value("--assay", "RNA")
+reduction <- arg_value("--reduction", "umap")
+cluster_col <- arg_value("--cluster-col", "cell_type")
+seed <- as.integer(arg_value("--seed", "123"))
 
 set.seed(seed)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -55,6 +65,7 @@ write.csv(
 
 cluster_factor <- colData(sce)[[cluster_col]]
 cluster_colors <- setNames(hcl.colors(nlevels(cluster_factor), "Dark 3"), levels(cluster_factor))
+# 功能：绘制 Slingshot 降维坐标、细胞标签和 lineage 曲线（函数：plot_trajectory）。
 plot_trajectory <- function() {
   plot(
     embedding,
@@ -83,6 +94,7 @@ writeLines(c(
   paste0("- 聚类列：", cluster_col),
   paste0("- 起始 cluster：", start_cluster),
   paste0("- lineage 数量：", ncol(pseudotime)),
-  paste0("- Slingshot SCE：", object_path)
+  paste0("- Slingshot SCE：", object_path),
+  "- 起始 cluster 必须由已知生物学起点指定；lineage 和 pseudotime 是低维结构的计算推断。"
 ), file.path(output_dir, "README_results_CN.md"))
 capture.output(sessionInfo(), file = file.path(output_dir, "sessionInfo.txt"))
