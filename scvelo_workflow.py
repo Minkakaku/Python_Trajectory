@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import scvelo as scv
 
 
-# 功能：把当前 Matplotlib 图同时保存为 PDF 和 300 dpi PNG。
+# 功能：把当前 Matplotlib 图同时保存为 PDF 和 600 dpi PNG。
 def save_current_figure(stem: Path, width: float = 9, height: float = 7) -> None:
     figure = plt.gcf()
     figure.set_size_inches(width, height)
     figure.tight_layout()
     figure.savefig(stem.with_suffix(".pdf"), bbox_inches="tight")
-    figure.savefig(stem.with_suffix(".png"), dpi=300, bbox_inches="tight")
+    figure.savefig(stem.with_suffix(".png"), dpi=600, bbox_inches="tight")
     plt.close(figure)
 
 

@@ -119,14 +119,14 @@ sample_cells_per_cluster <- function(seurat_object, colnames='leiden', num_cells
 # 功能：保存 Monocle2 轨迹图及按标签分面的轨迹图（函数：monocleplot）。
 monocleplot <- function(cds, colnames, ptsize=1) {
   p = plot_cell_trajectory(cds, color_by=colnames, size=ptsize, show_backbone=TRUE)
-  ggsave(paste0('monocle.trajectory.', colnames, '.png'), p, width=7, height=7.5)
+  ggsave(paste0('monocle.trajectory.', colnames, '.png'), p, width=7, height=7.5, dpi=600)
   ggsave(paste0('monocle.trajectory.', colnames, '.pdf'), p, width=7, height=7.5)
 
   ncols = ceiling(sqrt(length(unique(cds@phenoData@data[, colnames]))))
   nrows = ceiling(length(unique(cds@phenoData@data[, colnames])) / ncols)
   p = plot_cell_trajectory(cds, color_by=colnames, size=ptsize, show_backbone=TRUE) +
     facet_wrap(vars(!!sym(colnames)), nrow=nrows)
-  ggsave(paste0('monocle.trajectory.', colnames, '.faceted.png'), p, width=4*ncols, height=4.2*nrows)
+  ggsave(paste0('monocle.trajectory.', colnames, '.faceted.png'), p, width=4*ncols, height=4.2*nrows, dpi=600)
   ggsave(paste0('monocle.trajectory.', colnames, '.faceted.pdf'), p, width=4*ncols, height=4.2*nrows)
 }
 
@@ -192,7 +192,7 @@ ordergene <- rownames(deg)[1:min(1000, nrow(deg))]
 cds <- setOrderingFilter(cds, ordergene)
 
 pdf('monocle.ordergenes.pdf'); plot_ordering_genes(cds); dev.off()
-png('monocle.ordergenes.png', width=7, height=7.5, units='in', res=300); plot_ordering_genes(cds); dev.off()
+png('monocle.ordergenes.png', width=7, height=7.5, units='in', res=600); plot_ordering_genes(cds); dev.off()
 
 print('ReduceDimension and orderCells:')
 cds <- reduceDimension(cds, max_components = 2, reduction_method='DDRTree')
@@ -224,17 +224,17 @@ for (i in plotcol) {
 
 p = plot_cell_trajectory(cds, color_by='Pseudotime', size=ptsize, show_backbone=TRUE)
 ggsave('monocle.trajectory.pseudotime.pdf', p, width=7, height=7.5)
-ggsave('monocle.trajectory.pseudotime.png', p, width=7, height=7.5)
+ggsave('monocle.trajectory.pseudotime.png', p, width=7, height=7.5, dpi=600)
 p = plot_complex_cell_trajectory(cds, x=1, y=2, color_by=clustercolname)
 ggsave('monocle.trajectory.tree.pdf', p, width=7, height=7.5)
-ggsave('monocle.trajectory.tree.png', p, width=7, height=7.5)
+ggsave('monocle.trajectory.tree.png', p, width=7, height=7.5, dpi=600)
 
 ncols = ceiling(sqrt(length(unique(cds@phenoData@data[, clustercolname]))))
 nrows = ceiling(length(unique(cds@phenoData@data[, clustercolname])) / ncols)
 p = plot_complex_cell_trajectory(cds, x=1, y=2, color_by=clustercolname) +
   facet_wrap(vars(!!sym(clustercolname)), nrow=nrows)
 ggsave('monocle.trajectory.tree.faceted.pdf', p, width=4*ncols, height=4.2*nrows)
-ggsave('monocle.trajectory.tree.faceted.png', p, width=4*ncols, height=4.2*nrows)
+ggsave('monocle.trajectory.tree.faceted.png', p, width=4*ncols, height=4.2*nrows, dpi=600)
 
 meta_cols = c('sample', clustercolname, 'Size_Factor', 'num_genes_expressed', 'Pseudotime', 'State')
 meta_cols = meta_cols[meta_cols %in% colnames(cds@phenoData@data)]
@@ -258,11 +258,11 @@ if (BEAM_flag) {
       p = plot_genes_branched_heatmap(cds[selectgenes[1:min(100, length(selectgenes))], ],
         branch_point = branch_point, num_clusters = 4, cores = 1,
         use_gene_short_name = TRUE, show_rownames = TRUE, return_heatmap = TRUE)
-      ggsave(paste0(outbeam, '/BEAM_heatmap.png'), p$ph_res, width=7, height=8)
+      ggsave(paste0(outbeam, '/BEAM_heatmap.png'), p$ph_res, width=7, height=8, dpi=600)
       ggsave(paste0(outbeam, '/BEAM_heatmap.pdf'), p$ph_res, width=7, height=8)
       p2 = plot_genes_branched_pseudotime(cds[selectgenes[1:min(20, length(selectgenes))], ],
         branch_point = branch_point, color_by = 'State', ncol = 4)
-      ggsave(paste0(outbeam, '/BEAM_pseudotime_top20.png'), p2, width=15, height=12)
+      ggsave(paste0(outbeam, '/BEAM_pseudotime_top20.png'), p2, width=15, height=12, dpi=600)
       ggsave(paste0(outbeam, '/BEAM_pseudotime_top20.pdf'), p2, width=15, height=12)
     }
   }

@@ -64,7 +64,18 @@ write.csv(
 )
 
 cluster_factor <- colData(sce)[[cluster_col]]
-cluster_colors <- setNames(hcl.colors(nlevels(cluster_factor), "Dark 3"), levels(cluster_factor))
+NPG_COLORS <- c(
+  "#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F",
+  "#8491B4", "#91D1C2", "#DC0000", "#7E6148", "#B09C85"
+)
+n_levels <- nlevels(cluster_factor)
+cluster_colors <- if (n_levels <= length(NPG_COLORS)) {
+  NPG_COLORS[seq_len(n_levels)]
+} else {
+  extra_n <- n_levels - length(NPG_COLORS)
+  c(NPG_COLORS, colorRampPalette(NPG_COLORS)(2L * extra_n + 1L)[seq.int(2L, 2L * extra_n, by = 2L)])
+}
+cluster_colors <- setNames(cluster_colors, levels(cluster_factor))
 # 功能：绘制 Slingshot 降维坐标、细胞标签和 lineage 曲线（函数：plot_trajectory）。
 plot_trajectory <- function() {
   plot(
@@ -81,7 +92,7 @@ plot_trajectory <- function() {
 pdf(file.path(output_dir, "slingshot_trajectory.pdf"), width = 8, height = 7)
 plot_trajectory()
 dev.off()
-png(file.path(output_dir, "slingshot_trajectory.png"), width = 8, height = 7, units = "in", res = 300)
+png(file.path(output_dir, "slingshot_trajectory.png"), width = 8, height = 7, units = "in", res = 600)
 plot_trajectory()
 dev.off()
 

@@ -35,8 +35,9 @@ seed <- as.integer(arg_value("--seed", "123"))
 
 # 功能：绘制并整理 Monocle3 principal graph 分析结果（函数：save_plot）。
 save_plot <- function(plot, stem, width = 8, height = 7) {
+  plot <- plot + ggplot2::labs(subtitle = NULL) + ggplot2::theme(plot.subtitle = ggplot2::element_blank())
   ggsave(paste0(stem, ".pdf"), plot, width = width, height = height)
-  ggsave(paste0(stem, ".png"), plot, width = width, height = height, dpi = 300)
+  ggsave(paste0(stem, ".png"), plot, width = width, height = height, dpi = 600)
 }
 
 # 功能：根据指定起始细胞在 Monocle3 主图上选择 root 节点（函数：get_root_principal_node）。

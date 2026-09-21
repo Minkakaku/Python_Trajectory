@@ -18,10 +18,11 @@ arg_value <- function(name, default = NULL) {
   if (is.na(index) || index == length(args)) default else args[[index + 1L]]
 }
 
-# 功能：把 ggplot 同时保存为 PDF 和 300 dpi PNG。
+# 功能：把 ggplot 同时保存为 PDF 和 600 dpi PNG。
 save_plot <- function(plot, stem, width = 8, height = 6) {
+  plot <- plot + ggplot2::labs(subtitle = NULL) + ggplot2::theme(plot.subtitle = ggplot2::element_blank())
   ggsave(paste0(stem, ".pdf"), plot, width = width, height = height)
-  ggsave(paste0(stem, ".png"), plot, width = width, height = height, dpi = 300)
+  ggsave(paste0(stem, ".png"), plot, width = width, height = height, dpi = 600)
 }
 
 # 功能：从主 Seurat RDS 构建 Slingshot SingleCellExperiment。
