@@ -1,0 +1,10 @@
+methods:
+  paga:
+    input-h5ad: data/processed/annotated.h5ad
+    root-group: Progenitor
+    output-dir: results/10_paga
+    object-out: data/processed/10_paga.h5ad
+  scvelo:
+    input-h5ad: data/processed/velocity.h5ad
+    output-dir: results/11_scvelo
+    object-out: data/processed/11_scvelo.h5ad

@@ -1,0 +1,6 @@
+methods:
+  paga:
+    groupby: cell_type
+  scvelo:
+    groupby: cell_type
+    mode: stochastic
